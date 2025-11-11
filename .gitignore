@@ -1,0 +1,36 @@
+# =====================================================
+# 🧠  FAKE NEWS DETECTOR PROJECT (.gitignore)
+# Frontend (Vite + React)  +  Backend (Flask + Python)
+# =====================================================
+
+# Node (frontend)
+node_modules/
+dist/
+build/
+.env
+.env.local
+.vscode/
+.DS_Store
+
+# Python (backend)
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+venv/
+env/
+*.env
+*.log
+
+# Models (keep small .pkl files — we want to include them)
+# So we do NOT ignore backend/Model/*.pkl
+
+# OS / IDE files
+Thumbs.db
+.idea/
+*.sqlite3
+*.db
+
+# Misc
+*.bak
+*.tmp

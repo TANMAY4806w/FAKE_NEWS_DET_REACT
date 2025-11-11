@@ -1,0 +1,124 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================= */
+/* Base + Layout */
+/* ============================= */
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  @apply bg-bgLight text-textGray font-sans antialiased;
+}
+
+.container {
+  @apply max-w-5xl mx-auto px-6 py-10;
+}
+
+/* ============================= */
+/* Navbar */
+/* ============================= */
+.navbar {
+  @apply bg-white/80 backdrop-blur-md border-b border-blue-100 shadow-sm fixed top-0 w-full z-50;
+}
+
+.navbar-inner {
+  @apply flex justify-between items-center max-w-6xl mx-auto py-3 px-6;
+}
+
+.navbar-logo {
+  @apply text-primary font-bold text-xl flex items-center gap-2;
+}
+
+.navbar a {
+  @apply text-gray-700 hover:text-primary transition-colors duration-200 font-medium;
+}
+
+/* ============================= */
+/* Cards */
+/* ============================= */
+.card {
+  @apply bg-white shadow-card rounded-2xl p-8 border border-gray-100 transition-all duration-300 hover:shadow-soft;
+}
+
+/* ============================= */
+/* Headings */
+/* ============================= */
+h1, h2, h3, h4 {
+  @apply font-semibold text-textDark;
+}
+
+h1 {
+  @apply text-3xl md:text-4xl mb-4 text-primary;
+}
+
+h2 {
+  @apply text-2xl mb-3;
+}
+
+/* ============================= */
+/* Buttons */
+/* ============================= */
+.btn-primary {
+  @apply bg-primary hover:bg-blue-700 text-white font-semibold px-6 py-2.5 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md;
+}
+
+.btn-secondary {
+  @apply bg-secondary/10 hover:bg-secondary/20 text-primary font-medium px-6 py-2.5 rounded-lg transition-all duration-200;
+}
+
+.btn-accent {
+  @apply bg-accent hover:bg-yellow-400 text-gray-900 font-semibold px-6 py-2.5 rounded-lg transition-all duration-200;
+}
+
+/* ============================= */
+/* Input Fields */
+/* ============================= */
+input, textarea {
+  @apply w-full border border-gray-300 rounded-lg p-3 text-gray-800 
+  focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all duration-200;
+}
+
+/* ============================= */
+/* Footer */
+/* ============================= */
+.footer {
+  @apply text-center text-sm text-gray-500 py-4 border-t border-gray-200 mt-10;
+}
+
+.footer span {
+  @apply text-primary font-semibold;
+}
+
+/* ============================= */
+/* Utility + Animations */
+/* ============================= */
+.fade-in {
+  @apply opacity-0 animate-fadeIn;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-in-out forwards;
+}
+
+@keyframes gradientFlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradientFlow 5s ease infinite;
+}
+
+html {
+  scroll-behavior: smooth;
+}
