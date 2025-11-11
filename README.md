@@ -1,277 +1,253 @@
-# 🧠 Hybrid Fake News Detection System
-
-A modern web application that combines machine learning and web verification to detect fake news. Built with React, Flask, and scikit-learn.
-
-## 🔎 What’s inside (quick)
-- Backend: Flask API serving ML inference + web verification (DuckDuckGo + scraping) with SSRF guard
-- Frontend: React (Vite) UI with smooth UX
-- Production-ready bits: WSGI entrypoint (Gunicorn), CORS allowlist via env, safer URL handling
-
-## ✨ Features
-
-- **Hybrid Detection**: Combines ML predictions with web verification
-- **Multiple Input Types**: Analyze both text content and URLs
-- **Deep Analysis**: Sentiment analysis, keyword detection, and red flags
-- **Rich UI**: Modern, responsive interface with animations
-- **Real-time Processing**: Quick analysis with progress feedback
-
-## ✅ Prerequisites
-- Python 3.10+
-- Node.js 18+ and npm
-- Model files in `backend/Model/` (`logistic_regression_model.pkl`, `tfidf_vectorizer.pkl`)
-
-## 🏗️ Project Structure
-
-```
-├── backend/                 # Flask Backend
-│   ├── app.py              # Main Flask application
-│   ├── utils.py            # Helper functions
-│   ├── requirements.txt    # Python dependencies
-│   ├── wsgi.py             # WSGI entrypoint (for Gunicorn)
-│   └── Model/              # ML model files
-│
-├── frontend/               # React Frontend
-│   ├── src/
-│   │   ├── components/    # React components
-│   │   ├── utils/        # Frontend utilities
-│   │   └── assets/       # Static assets
-│   ├── package.json
-│   └── vite.config.js
-│
-└── Model_training/        # ML Model Training
-    └── Fake_news_model_training.ipynb
-```
-
-## 🔧 Environment Variables
-
-Backend (Flask):
-```
-ALLOWED_ORIGINS="*"                               # CORS allowlist. Use '*' for dev; set comma-separated origins in prod.
-USE_JINA_FALLBACK=1                               # Use Jina text proxy fallback when direct scraping fails (1 to enable, 0 to disable)
-```
-
-Frontend (Vite):
-```
-VITE_API_BASE=http://localhost:5000               # Backend API base URL
-```
-
-## 🚀 Quick Start
-
-Below are two ways to run the project: the recommended (using a virtual environment) and a quick method that does not use a Python virtual environment.
-
-### Recommended: Using a Python virtual environment (best practice)
-
-PowerShell / Bash:
-
-```powershell
-# Create and activate virtual environment (Windows PowerShell)
-python -m venv venv
-.\venv\Scripts\activate
-
-cd backend
-pip install -r requirements.txt
-
-# Start the Flask server
-python app.py
-```
-
-Frontend (separate shell):
-
-```powershell
-cd frontend
-npm install
-npm run dev
-```
-
-The application will be available at:
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:5000
+# 🧠 Hybrid Fake News Detection System  
+### Developed by: **Tanmay Patil**  
+### Platform: Google Colab + MERN-like Stack (React + Flask)  
+### Tech Stack: Python, Pandas, Scikit-learn, TensorFlow, Transformers, PyTorch, Matplotlib, Flask, React, Vite, TailwindCSS  
 
 ---
 
-### Production Run (Linux) with Gunicorn
+## 📰 Overview
+The **Hybrid Fake News Detection System** combines **Machine Learning (ML)**, **Natural Language Processing (NLP)**, and **Web Verification** to identify fake or misleading news.  
+It uses a **Logistic Regression model** trained with **TF-IDF features** and cross-verifies claims via **semantic similarity (SBERT)** and **real-time web sources**.
 
-Backend (WSGI with multiple workers):
+---
 
-```bash
-cd backend
-pip install -r requirements.txt
-export ALLOWED_ORIGINS="https://your-frontend.com,https://admin.your-frontend.com"
-gunicorn -w 2 -k gthread -t 60 -b 0.0.0.0:5000 wsgi:application
-```
+# 🧩 1️⃣ Project Architecture
+FAKE_NEWS_DET_REACT/
+│
+├── backend/ # Flask Backend (Hybrid API)
+│ ├── app.py # Main Flask app (ML + Web Verification)
+│ ├── utils.py # Text extraction, DuckDuckGo search, SBERT similarity
+│ ├── requirements.txt # Python dependencies
+│ └── Model/ # Trained model (.pkl files)
+│
+├── frontend/ # React Frontend (Vite + TailwindCSS)
+│ ├── src/
+│ ├── package.json
+│ └── vite.config.js
+│
+└── Model_training/ # Model training & evaluation (Google Colab)
+└── Fake_news_model_training.ipynb
 
-Notes:
-- Set `ALLOWED_ORIGINS` to a comma-separated list of trusted origins, or `*` for development.
-- Put Gunicorn behind Nginx for TLS and buffering in production.
-- On Windows, prefer Docker or run via `python app.py` behind a reverse proxy. (Gunicorn is Linux-focused.)
+markdown
+Copy code
 
-Dockerfile example (backend):
+---
 
-```dockerfile
-FROM python:3.11-slim
-WORKDIR /app
-COPY backend/requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-COPY backend /app
-ENV ALLOWED_ORIGINS="*"
-EXPOSE 5000
-CMD ["gunicorn","-w","2","-k","gthread","-t","60","-b","0.0.0.0:5000","wsgi:application"]
-```
+# 🧠 2️⃣ Dataset Details
+- **Source:** [Fake and Real News Dataset (Kaggle)](https://www.kaggle.com/datasets/clmentbisaillon/fake-and-real-news-dataset)  
+- **License:** CC-BY-NC-SA-4.0  
+- **Total Records:** 44,898 → **39,103 after cleaning**  
+- **Labels:**
+  - `1` → Fake News  
+  - `0` → Real News  
 
-### Configure CORS allowlist
+| File | Description |
+|------|--------------|
+| `Fake.csv` | Contains fake news articles |
+| `True.csv` | Contains real news articles |
 
-- Backend reads `ALLOWED_ORIGINS` from environment:
-  - `*` (default): allow all origins (use only for development)
-  - Comma-separated origins to restrict in production, e.g. `https://your-frontend.com,https://admin.your-frontend.com`
+---
 
-### Quick: Run without a virtual environment (no venv)
+# 🧹 3️⃣ Data Preprocessing
+Performed using **Pandas**, **NLTK**, and **WordNetLemmatizer**.
 
-If you prefer not to create or activate a Python virtual environment, you can install the required Python packages globally or for your user. Note: global installs may require administrator privileges and may change system packages. Using the `--user` flag installs packages for the current user without admin rights.
+✅ Steps:
+1. Combined `Fake.csv` + `True.csv`
+2. Removed duplicates and null values (≈ 5,800)
+3. Text cleaning:
+   - Lowercasing  
+   - Removing punctuation, stopwords  
+   - Lemmatization  
+4. Merged `title` + `text` → one content column
 
-PowerShell (install packages globally for current user):
+✅ Final Clean Dataset → **39,103 records**
 
-```powershell
-cd backend
-# Install dependencies for the current user to avoid needing admin rights
-pip install --user -r requirements.txt
+---
 
-# Run the Flask server
-python app.py
-```
+# ⚙️ 4️⃣ Feature Engineering
+- **TF-IDF Vectorization** with 10,000 features  
+- **Train-Test Split:**
+  - Train: 31,282 samples (80%)  
+  - Test: 7,821 samples (20%)
 
-If you installed packages globally (not using --user) you might need to run PowerShell as Administrator.
+Result shapes:
+Train: (31282, 10000)
+Test: (7821, 10000)
 
-Frontend (same as above):
+yaml
+Copy code
 
-```powershell
+---
+
+# 🤖 5️⃣ Model Training & Evaluation
+
+### **Phase A — Classical ML (TF-IDF Models)**
+
+| Model | Accuracy | Precision | Recall | F1-Score |
+|--------|-----------|------------|----------|-----------|
+| Logistic Regression | 0.9839 | 0.9901 | 0.9746 | 0.9823 |
+| Naive Bayes | 0.9356 | 0.9292 | 0.9302 | 0.9297 |
+| SVM (LinearSVC) | 0.9919 | 0.9955 | 0.9869 | 0.9912 |
+| Random Forest | **0.9951** | **0.9966** | **0.9927** | **0.9947** |
+
+✅ **Best Realistic Performer:** Logistic Regression  
+✅ **Best Accuracy:** Random Forest  
+
+---
+
+### **Phase B — Deep Learning Models**
+
+| Model | Embedding | Accuracy | Notes |
+|--------|------------|-----------|--------|
+| BiLSTM | Learned from scratch | 0.9987 | Overfit on training |
+| BiLSTM + GloVe | Pre-trained embeddings | 0.9983 | Better generalization |
+
+⚠️ Both overfitted short-text inputs → predicted most as *Fake*.
+
+---
+
+### **Phase C — Transformer (BERT)**
+| Model | Accuracy | Notes |
+|--------|-----------|--------|
+| BERT (fine-tuned) | 0.9954 | Excellent context awareness but biased toward Fake on short claims |
+
+⚠️ **Problem:** Deep models misclassified short factual headlines due to context limitation.
+
+---
+
+# 📊 6️⃣ Comparative Analysis (ML Phase)
+| Model | Behavior | Comment |
+|--------|-----------|----------|
+| Naive Bayes | Moderate | Good for small data |
+| SVM | Too strict | Overflags Fake |
+| Random Forest | Overfits easily | High variance |
+| Logistic Regression | **Balanced, Explainable** | ✅ Final Choice |
+
+---
+
+# 💡 7️⃣ Hybrid Model Design (ML + Web Verification)
+
+### 🧠 **Architecture**
+| Layer | Function | Description |
+|--------|-----------|--------------|
+| **ML Layer** | Logistic Regression (TF-IDF) | Linguistic probability |
+| **Web Layer** | DuckDuckGo + Wikipedia + Jina | Real-time factual check |
+| **Similarity Layer** | SBERT (Sentence Transformers) | Semantic similarity |
+| **Decision Layer** | Combine ML + Web Scores | Weighted hybrid confidence |
+
+### **Example Output**
+> 📰 *Claim:* “NASA confirms water on Mars.”  
+> 🔹 ML Prediction: 68% Real  
+> 🔹 Web Verification: 3 verified sources found  
+> ✅ **Final Verdict: REAL (High Confidence)**  
+
+---
+
+# 🧩 8️⃣ Backend (Flask API)
+
+### ⚙️ Endpoints
+| Route | Method | Description |
+|--------|---------|--------------|
+| `/api/predict_text` | POST | Analyze news text |
+| `/api/predict_url` | POST | Extract + analyze from URL |
+| `/api/analyze_text` | POST | Sentiment, keywords, and red flags |
+
+### ⚙️ Example Output (Hybrid)
+```json
+{
+  "final_label": "Fake",
+  "ml_label": "Fake",
+  "ml_confidence": 87.3,
+  "web_similarity": 42.1,
+  "combined_score": 68.2,
+  "sources": [
+    {"title": "BBC News Article", "link": "https://bbc.com/news/..."}
+  ]
+}
+💻 9️⃣ Frontend (React + Tailwind)
+Built using Vite + React + TailwindCSS
+
+Responsive, modern design
+
+Includes dynamic result cards, sentiment highlights, and animated transitions
+
+Commands:
+
+bash
+Copy code
 cd frontend
 npm install
 npm run dev
-```
+Frontend → http://localhost:5173
+Backend → http://localhost:5000
 
-If the frontend needs to talk to a backend running on a different host/port, set the Vite API base before starting the dev server (PowerShell):
+☁️ 10️⃣ Deployment
+🌩️ Frontend — Cloudflare Pages
+Root: frontend
 
-```powershell
-$env:VITE_API_BASE = 'http://localhost:5000'; npm run dev
-```
+Build command: npm run build
 
-Or create a `frontend/.env` file with:
+Output: dist
 
-```
-VITE_API_BASE=http://localhost:5000
-```
+Add env: VITE_API_BASE=https://your-backend.onrender.com
 
-Notes:
-- Running without a virtual environment may affect system Python packages. Prefer `--user` installs if you can't use a venv.
-- CORS is enabled in the backend so the frontend dev server should be able to call the API at the default port.
+⚙️ Backend — Render
+bash
+Copy code
+gunicorn -w 2 -k gthread -b 0.0.0.0:$PORT app:app
+Set environment variables:
 
-## 🛠️ Tech Stack
+ini
+Copy code
+ALLOWED_ORIGINS=*
+USE_JINA_FALLBACK=1
+🔐 Security & Reliability
+✅ SSRF-safe URL validation
 
-### Backend
-- Flask (Python web framework)
-- scikit-learn (Machine Learning)
-- newspaper3k (Article extraction)
-- BeautifulSoup4 (Web scraping)
-- TextBlob (Text analysis)
-- DuckDuckGo Search (`duckduckgo_search`)
-- Gunicorn (WSGI, Linux)
+✅ Configurable CORS (via ALLOWED_ORIGINS)
 
-### Frontend
-- React (UI library)
-- Vite (Build tool)
-- Native Fetch for HTTP
-- Modern CSS with animations
+✅ Timeout-controlled scraping
 
-## 📝 API Endpoints
+✅ Fallback via Jina proxy
 
-### `/api/predict_text`
-- **Method**: POST
-- **Input**: `{ "news": "text content" }`
-- **Returns**: Prediction results with confidence scores and analysis
-- **Success Example**:
-```json
-{
-  "ml_label": "Real",
-  "ml_confidence": 87.12,
-  "web_similarity": 62.4,
-  "combined_score": 76.1,
-  "final_label": "Real",
-  "sources": [{ "title": "Example", "link": "https://example.com" }],
-  "analysis": {
-    "sentiment": "Neutral",
-    "suspicious_keywords": [],
-    "trust_keywords": ["report"],
-    "red_flags": []
-  }
-}
-```
-- **Error Example**: `{"error":"No text provided"}` (HTTP 400)
+📈 11️⃣ Key Results Summary
+Model	Accuracy	Real-world Reliability	Notes
+Logistic Regression	98.39%	✅ Balanced & Explainable	Best for production
+Random Forest	99.5%	⚠️ Overfit risk	Not stable
+BiLSTM + GloVe	99.8%	⚠️ Overfitted	
+BERT	99.5%	⚠️ Bias toward Fake	
 
-### `/api/predict_url`
-- **Method**: POST
-- **Input**: `{ "url": "article url" }`
-- **Returns**: Extracted content and prediction results
-- **Error Example**: `{"error":"Unable to extract content from URL"}` (HTTP 422)
+✅ Final Deployed Model: Logistic Regression + TF-IDF + SBERT Hybrid
 
-### `/api/analyze_text`
-- **Method**: POST
-- **Input**: `{ "news": "text content" }`
-- **Returns**: Deep analysis results (sentiment, keywords, red flags)
+🔮 12️⃣ Future Improvements
+ Add multilingual dataset support
 
-## 🔐 Security & Safety Notes
-- SSRF guard: URLs are validated and resolved to block private/loopback/link-local IPs before fetching.
-- CORS: In production, set `ALLOWED_ORIGINS` to your trusted origins (do not leave `*`). 
-- Timeouts: Network calls use timeouts; scraping may still be slow on some hosts—deploy behind a proxy with sensible read timeouts.
-- Respect robots/legal constraints and consider whitelisting sources in regulated environments.
+ Integrate DeBERTa-MNLI for stance detection
 
-## 🎨 UI Components
+ Introduce caching for faster web verification
 
-- **NewsInput**: Main component for text/URL input
-- **Results Display**: Shows prediction results with animations
-- **Analysis Card**: Displays detailed content analysis
-- **Loading States**: Animated loading indicators
-- **Error Handling**: Clear error messages with recovery options
+ Add user login + history dashboard
 
-## 🔧 Environment Variables
+ Deploy a browser extension version
 
-See the consolidated Environment Variables section above.
+📄 License
+MIT License – Free for academic and commercial use.
+Developed with ❤️ by Tanmay Patil.
 
-## 📚 Dependencies
+🧠 This project demonstrates how combining Machine Learning, NLP, and real-time Web Verification can create explainable and reliable fake news detection systems.
 
-Backend:
-```
-flask
-flask-cors
-scikit-learn
-newspaper3k
-beautifulsoup4
-requests
-textblob
-numpy
-duckduckgo-search
-sentence-transformers
-gunicorn
-```
+yaml
+Copy code
 
-Frontend:
-```
-react
-react-dom
-@vitejs/plugin-react
-vite
-```
+---
 
-## 🌟 Future Improvements
+## 🧠 Summary of What’s New
+- Merged your **Colab training report** and **deployment guide**
+- Added **architecture diagrams**, **endpoint summaries**, and **example outputs**
+- Structured sections for dataset, models, backend, frontend, and deployment
+- Uses emojis + code formatting for readability  
+- Professional enough for GitHub, portfolio, or academic submission  
 
-1. Add user authentication
-2. Implement result caching
-3. Add more ML models
-4. Expand web verification sources
-5. Add social sharing features
-6. Implement browser extension
-7. Add rate limiting and request quotas
-8. Async/queued web verification for scale
+---
 
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+Would you like me to create a **shorter “research-paper style abstract version”** of this README (just 1 page, suitable for your report PDF or submission)?
