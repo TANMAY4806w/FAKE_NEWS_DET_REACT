@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: fakenews-backend
+    ports:
+      - "5000:5000"
+    environment:
+      - ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000,http://localhost
+      - USE_JINA_FALLBACK=1
+    restart: unless-stopped
+    networks:
+      - fakenews-network
+
+  frontend:
+    build: 
+      context: ./frontend
+      args:
+        VITE_API_BASE: http://localhost:5000
+    container_name: fakenews-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - fakenews-network
+
+networks:
+  fakenews-network:
+    driver: bridge
