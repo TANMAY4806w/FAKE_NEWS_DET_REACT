@@ -148,13 +148,12 @@ Your app is working correctly if:
 
 ## 📸 Take Screenshots for Portfolio
 
-Once everything works:
+Once everything works, capture the new **Premium Dark Glassmorphism UI**:
 
-1. **Homepage** - Show the landing page
-2. **Text Analysis** - Show a successful prediction
-3. **Results Page** - Show detailed analysis with sources
-4. **About Page** - Show project information
-
+1. **Homepage** - Capture the animated gradient text and glowing background orbs.
+2. **Analysis Dashboard** - Capture the frosted glass mode-toggle panel.
+3. **Results Page** - Run an analysis to show off the Neon glowing progress bars (Red/Green) and the detailed insight cards.
+4. **About Page** - Show the beautifully balanced modern typography and component grid.
 ---
 
 ## 🚀 Ready for Deployment?

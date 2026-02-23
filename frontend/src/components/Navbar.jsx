@@ -11,7 +11,7 @@ export default function Navbar() {
       : 'text-blue-100 hover:text-white transition-colors duration-200';
 
   return (
-    <header className="fixed top-0 left-0 w-full z-50 bg-gradient-to-r from-primary to-secondary shadow-md backdrop-blur-sm">
+    <header className="glass-navbar">
       <div className="max-w-6xl mx-auto flex items-center justify-between py-3 px-6">
         {/* Logo */}
         <Link to="/" className="text-white text-2xl font-bold flex items-center gap-1">

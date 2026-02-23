@@ -12,7 +12,13 @@ function App() {
   const location = useLocation();
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-indigo-50 via-white to-cyan-50 text-gray-800 font-sans">
+    <div className="min-h-screen flex flex-col bg-bgDark text-textWhite font-sans relative overflow-hidden">
+      {/* Animated Background Orbs */}
+      <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
+        <div className="bg-orb orb-1"></div>
+        <div className="bg-orb orb-2"></div>
+        <div className="bg-orb orb-3"></div>
+      </div>
       {/* Navbar */}
       <Navbar />
 

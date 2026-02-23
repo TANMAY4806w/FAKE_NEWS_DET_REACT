@@ -101,15 +101,22 @@ def predict_hybrid(news_text):
     ml_label = "Fake" if pred == 1 else "Real"
     ml_confidence = round(prob if pred == 1 else 100 - prob, 2)
 
-    articles = fetch_web_articles(news_text)
+    ddg_res = fetch_web_articles(news_text)
+    web_status = ddg_res["status"]
+    articles = ddg_res["articles"]
+
     web_similarity = round(compute_similarity(news_text, articles), 2)
 
-    combined = combine_scores(ml_confidence, web_similarity)
+    # 🚨 Combine handles "0" similarity gracefully if it's unavailable, 
+    # but let's pass down exactly what to weight if unavailable.
+    # We already have thresholding inside combine_scores.
+    combined = combine_scores(ml_label, ml_confidence, web_similarity)
 
     return {
         "ml_label": ml_label,
         "ml_confidence": ml_confidence,
         "web_similarity": web_similarity,
+        "web_verification_status": web_status,
         "final_label": combined["final_label"],
         "combined_score": combined["combined_score"],
         "sources": [{"title": a["title"], "link": a["link"]} for a in articles],
@@ -158,52 +165,20 @@ def predict_url():
         article_data = extract_article_text(url)
         text = article_data.get("text", "").strip()
         if not text:
-            return jsonify({"error": "Unable to extract content from URL"}), 422
+            error_msg = article_data.get("error", "Unable to extract content from URL. Site may have bot protection.")
+            return jsonify({"error": error_msg}), 422
 
-        # 2️⃣ ML Prediction
-        vectorized = vectorizer.transform([text])
-        ml_pred = model.predict(vectorized)[0]
-        ml_conf = model.predict_proba(vectorized)[0][int(ml_pred)] * 100
-        ml_label = "Fake" if ml_pred == 1 else "Real"
+        # 2️⃣ Run Hybrid Prediction using existing function
+        result = predict_hybrid(text)
 
-        # 3️⃣ Web Verification
-        search_query = article_data.get("title") or text[:100]
-        with DDGS() as ddgs:
-            search_results = list(ddgs.text(search_query, max_results=5))
+        # 3️⃣ Add extra URL specific fields
+        result["headline"] = article_data.get("title", "")
+        result["news_text"] = text[:2000]
 
-        valid_results = [
-            {"title": r["title"], "link": r["href"], "body": r.get("body", "")}
-            for r in search_results if r.get("href", "").startswith("http")
-        ]
+        # 4️⃣ Analyze
+        result["analysis"] = analyze_content(text)
 
-        similarities = []
-        for r in valid_results:
-            snippet = f"{r['title']} {r.get('body', '')}"
-            sim = cosine_similarity(vectorizer.transform([text]), vectorizer.transform([snippet]))[0][0]
-            similarities.append(sim * 100)
-
-        web_similarity = float(np.mean(similarities)) if similarities else 0.0
-
-        # 4️⃣ Combine
-        combined = combine_scores(ml_conf, web_similarity)
-
-        # 5️⃣ Analyze
-        sentiment = TextBlob(text).sentiment.polarity
-        sentiment_label = "Positive" if sentiment > 0.2 else "Negative" if sentiment < -0.2 else "Neutral"
-
-        return jsonify({
-            "headline": article_data.get("title", ""),
-            "news_text": text[:2000],
-            "ml_label": ml_label,
-            "ml_confidence": round(ml_conf, 2),
-            "web_similarity": round(web_similarity, 2),
-            "combined_score": combined["combined_score"],
-            "final_label": combined["final_label"],
-            "sources": valid_results,
-            "analysis": {
-                "sentiment": sentiment_label,
-            }
-        }), 200
+        return jsonify(result), 200
 
     except Exception as e:
         print("Error in /predict_url:", e)

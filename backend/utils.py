@@ -4,8 +4,10 @@ import socket
 import numpy as np
 import requests
 from duckduckgo_search import DDGS
-from sentence_transformers import SentenceTransformer, util
 from bs4 import BeautifulSoup
+from functools import lru_cache
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
 # optional: prefer newspaper3k when available (best extraction)
 try:
@@ -14,15 +16,13 @@ try:
 except Exception:
     HAS_NEWSPAPER = False
 
-# Load SBERT model only once globally (avoid reloading every time)
-sbert_model = SentenceTransformer("all-MiniLM-L6-v2")
-
 # Enable Jina fallback by default; set USE_JINA_FALLBACK=0 to disable
 USE_JINA_FALLBACK = os.getenv("USE_JINA_FALLBACK", "1") not in ("0", "false", "False")
 
 # -------------------------------------------------------
 # 🔍 Fetch Web Articles (DuckDuckGo)
 # -------------------------------------------------------
+@lru_cache(maxsize=100)
 def fetch_web_articles(query, max_results=3):
     """
     Fetch brief text snippets and links from DuckDuckGo search results.
@@ -30,9 +30,10 @@ def fetch_web_articles(query, max_results=3):
         query (str): The news headline or sentence to search.
         max_results (int): Number of articles to fetch (default = 3)
     Returns:
-        list[dict]: [{title, body, link}, ...]
+        dict: {"status": "success"|"unavailable", "articles": [{title, body, link}, ...]}
     """
     results = []
+    status = "success"
     try:
         with DDGS() as ddgs:
             for r in ddgs.text(query, region="in-en", max_results=max_results):
@@ -43,7 +44,8 @@ def fetch_web_articles(query, max_results=3):
                 })
     except Exception as e:
         print(f"[⚠️] DuckDuckGo fetch failed: {e}")
-    return results
+        status = "unavailable"
+    return {"status": status, "articles": results}
 
 
 # -------------------------------------------------------
@@ -117,24 +119,23 @@ def is_url_allowed(url: str) -> bool:
         return False
 
 
+@lru_cache(maxsize=100)
 def extract_article_text(url, timeout=10):
     """
     Try multiple strategies to extract article title and text from a URL.
     Returns: dict {"title": str, "text": str}
     """
-    # SSRF guard
+    # SSRF guard: strictly abort if check fails
     if not is_url_allowed(url):
+        print(f"[⚠️] SSRF blocked: {url}")
         return {"title": "", "text": ""}
 
-    # 1) Try newspaper3k if available (often the best).
-    # Use a requests Session to fetch HTML and then feed it to newspaper to allow
-    # custom headers (helps avoid 401/403 on some sites).
+        # 1) Try newspaper3k if available (often the best).
     session = requests.Session()
     session.headers.update(DEFAULT_HEADERS)
 
     if HAS_NEWSPAPER:
         try:
-            # fetch HTML using session so we can control headers
             resp = session.get(url, timeout=timeout, allow_redirects=True)
             resp.raise_for_status()
             art = Article(url)
@@ -144,18 +145,18 @@ def extract_article_text(url, timeout=10):
             text = (art.text or "").strip()
             if text:
                 return {"title": title, "text": text}
-        except Exception:
-            # fall through to requests + bs4
+        except Exception as e:
+            # specifically check for anti-bot
+            if "403" in str(e) or "401" in str(e):
+                pass # let it fall through to Jina
             pass
 
     # 2) requests + BeautifulSoup fallback
     try:
-        # Limit redirects implicitly via requests (default 30). Enforce timeout.
         resp = session.get(url, timeout=timeout, allow_redirects=True)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
 
-        # Title: prefer <meta property="og:title"> or <title>
         title = ""
         og_title = soup.find("meta", property="og:title")
         if og_title and og_title.get("content"):
@@ -163,7 +164,6 @@ def extract_article_text(url, timeout=10):
         elif soup.title and soup.title.string:
             title = soup.title.string.strip()
 
-        # Text: prefer <article> tag, else aggregate paragraphs
         text = ""
         article_tag = soup.find("article")
         if article_tag:
@@ -172,69 +172,76 @@ def extract_article_text(url, timeout=10):
         else:
             ps = soup.find_all("p")
             if ps:
-                # take several leading paragraphs as a fallback
                 paragraphs = [p.get_text(strip=True) for p in ps[:12]]
                 text = "\n\n".join([p for p in paragraphs if p])
 
-        result = {"title": title or "", "text": text or ""}
-        if result["text"]:
-            return result
+        if text:
+            return {"title": title or "", "text": text}
+            
+    except requests.exceptions.HTTPError as he:
+        # If it's a 403 Forbidden, the site is explicitly blocking us
+        if he.response.status_code in (403, 401, 404, 520, 503):
+            return {"title": "", "text": "", "error": f"The website blocked automated access (Status {he.response.status_code}). Please paste the article text directly instead."}
+    except Exception as e:
+        pass
 
-        # If the site blocks direct scraping (401/403) or returned empty text,
-        # attempt a lightweight text-extraction proxy as a final fallback.
-        # Jina's text extraction proxy (r.jina.ai) often returns cleaned article text.
+    # 3) If direct requests failed, attempt Jina Proxy
+    if USE_JINA_FALLBACK:
         try:
             cleaned_url = url.replace('https://', '').replace('http://', '')
             jina_url = f"https://r.jina.ai/http://{cleaned_url}"
             jr = session.get(jina_url, timeout=8)
             if jr.status_code == 200 and jr.text.strip():
-                # Jina returns plaintext; first line is often the title
                 body = jr.text.strip()
-                first_line = body.splitlines()[0].strip()
-                return {"title": first_line or title or "", "text": body}
+                if "SecurityCompromiseError" not in body and len(body) > 100:
+                    first_line = body.splitlines()[0].strip()
+                    return {"title": first_line or "", "text": body}
         except Exception:
             pass
 
-        return result
-    except Exception as e:
-        # If the direct fetch fails (401/403 or other), try the Jina proxy as a fallback
-        print(f"[⚠️] extract_article_text failed for {url}: {e}")
-        if USE_JINA_FALLBACK:
-            try:
-                cleaned_url = url.replace('https://', '').replace('http://', '')
-                jina_url = f"https://r.jina.ai/http://{cleaned_url}"
-                jr = session.get(jina_url, timeout=8)
-                if jr.status_code == 200 and jr.text.strip():
-                    body = jr.text.strip()
-                    first_line = body.splitlines()[0].strip()
-                    return {"title": first_line or "", "text": body}
-            except Exception:
-                pass
-
-        return {"title": "", "text": ""}
+    return {"title": "", "text": "", "error": "This website has strong anti-bot protection and blocked extraction. Please copy and paste the article text manually."}
 
 
 # -------------------------------------------------------
-# 🧠 Compute Semantic Similarity (SBERT)
+# 🧠 Compute Semantic Similarity (TF-IDF)
 # -------------------------------------------------------
 def compute_similarity(news_text, articles):
     """
-    Compute cosine similarity between input news and fetched web article snippets.
+    Compute cosine similarity between input news and fetched web article snippets using TF-IDF.
     Args:
         news_text (str): Input claim text.
         articles (list): List of dicts with "body" keys.
     Returns:
         float: Average similarity score in percentage.
     """
-    if not articles:
+    if not articles or not news_text.strip():
         return 0.0
+    
+    valid_articles = [a for a in articles if a.get("body", "").strip()]
+    if not valid_articles:
+        return 0.0
+        
     try:
-        claim_emb = sbert_model.encode(news_text, convert_to_tensor=True)
-        article_embs = sbert_model.encode(
-            [a["body"] for a in articles], convert_to_tensor=True
-        )
-        sims = util.cos_sim(claim_emb, article_embs)
-        avg_sim = float(np.mean(sims.cpu().numpy())) * 100
+        # Extract first ~3 sentences for tighter comparison instead of full article
+        sentences = [s.strip() for s in news_text.replace('!', '.').replace('?', '.').split('.') if s.strip()]
+        claim_text = '. '.join(sentences[:3]) + '.' if sentences else news_text
+        
+        # Combine the claim and all article snippets into a single list for TF-IDF vectorization
+        documents = [claim_text] + [a["body"] for a in valid_articles]
+        
+        # Initialize the vectorizer and fit_transform the documents
+        vectorizer = TfidfVectorizer(stop_words='english')
+        tfidf_matrix = vectorizer.fit_transform(documents)
+        
+        # The first row is the claim vector, the rest are article vectors
+        claim_vector = tfidf_matrix[0:1]
+        article_vectors = tfidf_matrix[1:]
+        
+        # Calculate cosine similarities
+        sims = cosine_similarity(claim_vector, article_vectors)[0]
+        
+        # Average similarity across all retrieved articles snippet bodies
+        avg_sim = float(np.mean(sims)) * 100
         return avg_sim
     except Exception as e:
         print(f"[⚠️] Similarity computation failed: {e}")
@@ -244,10 +251,11 @@ def compute_similarity(news_text, articles):
 # -------------------------------------------------------
 # 🧩 Hybrid Combination Logic
 # -------------------------------------------------------
-def combine_scores(ml_confidence, web_similarity, ml_weight=0.6, web_weight=0.4):
+def combine_scores(ml_label, ml_confidence, web_similarity, ml_weight=0.6, web_weight=0.4):
     """
     Combine ML confidence and Web Similarity for hybrid verdict.
     Args:
+        ml_label (str): "Real" or "Fake" from ML model
         ml_confidence (float): Model’s confidence in its prediction (0–100)
         web_similarity (float): Average factual similarity score (0–100)
         ml_weight (float): Weight for ML prediction (default = 0.6)
@@ -255,6 +263,25 @@ def combine_scores(ml_confidence, web_similarity, ml_weight=0.6, web_weight=0.4)
     Returns:
         dict: {combined_score, final_label}
     """
-    combined = (ml_confidence * ml_weight) + (web_similarity * web_weight)
+    # Define threshold for "inconclusive" web verification
+    WEB_VERIFICATION_THRESHOLD = 20  # Below this, web verification is unreliable
+
+    if web_similarity < WEB_VERIFICATION_THRESHOLD:
+        ml_weight_adjusted = 0.8
+        web_weight_adjusted = 0.2
+    else:
+        ml_weight_adjusted = ml_weight
+        web_weight_adjusted = web_weight
+
+    # Convert to unified scale (100 = Real, 0 = Fake)
+    ml_score = ml_confidence if ml_label == "Real" else (100 - ml_confidence)
+
+    combined = (ml_score * ml_weight_adjusted) + (web_similarity * web_weight_adjusted)
     label = "Real" if combined >= 50 else "Fake"
-    return {"combined_score": round(combined, 2), "final_label": label}
+    
+    return {
+        "combined_score": round(combined, 2), 
+        "final_label": label,
+        "ml_score": round(ml_score, 2),
+        "web_verification_reliable": web_similarity >= WEB_VERIFICATION_THRESHOLD
+    }

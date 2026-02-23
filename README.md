@@ -24,11 +24,12 @@ A modern web application that combines machine learning and web verification to 
 - **Production**: WSGI entrypoint (Gunicorn), CORS allowlist via environment variables
 ## ✨ Features
 
-- **Hybrid Detection**: Combines ML predictions with web verification
-- **Multiple Input Types**: Analyze both text content and URLs
-- **Deep Analysis**: Sentiment analysis, keyword detection, and red flags
-- **Rich UI**: Modern, responsive interface with animations
-- **Real-time Processing**: Quick analysis with progress feedback
+- **Hybrid AI Detection**: Combines Machine Learning predictions with real-time web verification.
+- **Premium Interface**: A stunning, modern dark-themed UI featuring glassmorphism elements, neon glows, and fluid `framer-motion` micro-animations.
+- **Extreme Performance**: Uses `functools.lru_cache` on the backend to cache external API responses, yielding instant results for repeated queries.
+- **Intelligent Semantic Search**: Encodes the core claims of articles using **TF-IDF Vectorization** and **Cosine Similarity** to detect factual overlap with DuckDuckGo search snippets, optimized specifically for low-memory deployment environments.
+- **Multiple Input Types**: Seamlessly analyze both raw text content and article URLs, protected by strong SSRF guards.
+- **Deep NLP Analysis**: Provides sentiment analysis, suspicious keyword detection, and structural red flags.
 
 ## 📊 Dataset Information
 
@@ -227,10 +228,11 @@ Notes:
 - Gunicorn (WSGI, Linux)
 
 ### Frontend
-- React (UI library)
-- Vite (Build tool)
+- React 18 (UI library)
+- Vite (Next-generation Build tool)
+- Tailwind CSS (Utility-first styling & Neon Glassmorphism design system)
+- Framer Motion (Fluid layout animations and page transitions)
 - Native Fetch for HTTP
-- Modern CSS with animations
 
 ## 📝 API Endpoints
 
@@ -274,13 +276,13 @@ Notes:
 - Timeouts: Network calls use timeouts; scraping may still be slow on some hosts—deploy behind a proxy with sensible read timeouts.
 - Respect robots/legal constraints and consider whitelisting sources in regulated environments.
 
-## 🎨 UI Components
+## 🎨 UI & Design System
 
-- **NewsInput**: Main component for text/URL input
-- **Results Display**: Shows prediction results with animations
-- **Analysis Card**: Displays detailed content analysis
-- **Loading States**: Animated loading indicators
-- **Error Handling**: Clear error messages with recovery options
+- **Premium Dark Aesthetics**: Deep space backgrounds with floating ambient gradient orbs.
+- **Glassmorphism Components**: Frosted glass dashboard panels (`backdrop-blur-xl`) with translucent borders.
+- **Dynamic Neon Results**: Glowing progress bars and verdict text (Neon Green for Real, Neon Red for Fake).
+- **Animated Page Transitions**: Seamless morphing and fading between Home, Analyze, and About pages.
+- **Typography**: Powered by the modern `Outfit` Google Font for a crisp tech-forward presentation.
 
 ## 🔧 Environment Variables
 
